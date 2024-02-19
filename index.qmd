@@ -1,0 +1,537 @@
+---
+title: "Daily dynamics and weekly rhythms"
+description: | 
+  Reproducible code for *Daily dynamics and weekly rhythms: A tutorial on seasonal ARMA models combined with day-of-week effects*.
+subtitle: "Reproducible Code"
+author:
+  - name: M. M. Haqiqatkhah
+    affiliation: Utrecht University
+    affiliation-url: https://www.uu.nl/staff/MHHaqiqatkhah
+    orcid: 0000-0002-2513-3761
+  - name: E. L. Hamaker
+    affiliation: Utrecht University
+    affiliation-url: https://www.uu.nl/staff/ELHamaker
+citation:
+  url: https://psyguy.github.io/weekly-rhythms
+google-scholar: true
+format:
+  html:
+    code-fold: true
+    code-tools: true
+    code-overflow: scroll
+    output-file: "index.html"
+    code-line-numbers: true
+    toc: true
+    toc-location: body
+    number-sections: true
+    number-offset: 0
+    link-external-newwindow: true
+    toc-depth: 5
+    self-contained: false
+    self-contained-math: false
+    code-summary: "Click to expand the code"
+    anchor-sections: true
+    theme:
+      light: litera
+      dark: darkly
+    comments:
+      hypothesis: true
+  pdf:
+    number-sections: true
+    number-depth: 8
+    #number-offset: -1
+    toc: true
+    output-file: Code documentations
+    toc-depth: 8
+## For html
+execute:
+  enabled: true
+  eval: false
+  echo: true
+  include: true
+  warning: false
+  error: false
+  freeze: auto
+  cache: refresh
+editor: visual
+bibliography: references.bib
+---
+
+# Introduction {#sec-intro}
+
+This document contains reproducible code of the manuscript on weekly patterns and dynamics.
+Please cite as
+
+> citation info
+
+This document has two main sections:
+
+In @sec-functions, we present the functions used for making the visualizations (@sec-visualization), generating simulated time series (@sec-simulation), running the Shiny app accompanying the paper (@sec-shiny), and fitting models to empirical data (@sec-modeling).
+
+In @sec-reproducing, we provide the empirical dataset and additional plots for empirical time series (@sec-investigate), which is followed by the reproducible code for generating figures shown in the paper (@sec-reproduce-figures), running all the the analyses on the empirical dataset (@sec-empirical-fitting) and making the tables reported in the paper  (@sec-reproducing).
+
+To replicate the study from the scratch, you should first either clone the repository (using `git clone https://github.com/psyguy/WeCycle.git`) or [download the repository as a zip file](https://github.com/psyguy/WeCycle/archive/refs/heads/main.zip) and extract it on your machine.
+Then you can run the `.R` files you find in the `scripts` folder with the following order:
+
+```{r}
+#| code-fold: false
+#| eval: false
+
+source("scripts/initialization.R")
+source("scripts/functions_simulation.R")
+source("scripts/functions_visualization.R")
+source("scripts/functions_modeling.R")
+source("scripts/run_figures.R")
+source("scripts/run_analyses.R")
+
+```
+
+Alternatively, if you have [Quarto installed](https://quarto.org/docs/get-started/) installed on your machine, you can compile `index.qmd` located in the root directory using Quarto after setting the following variables to `TRUE`:
+
+```{r}
+#| eval: true
+#| echo: true
+#| code-fold: false
+
+load_functions <- FALSE
+run_figures <- FALSE
+run_analyses <- FALSE
+```
+
+
+```{r}
+#| label: setup
+#| echo: false
+#| include: false
+#| eval: true
+#| cache: false
+#| freeze: false
+
+library(knitr)
+
+scripts <- list.files(path = here::here("scripts"),
+                      pattern = ".R",
+                      full.names = TRUE)
+
+sapply(scripts, knitr::read_chunk)
+```
+
+```{r, eval = load_functions}
+#| include: false
+#| echo: false
+
+<<load_packages>>
+```
+
+# R functions {#sec-functions}
+
+The code used for plotting the time series and fitting the models requires the time series $y_t$ to be stored in a data.frame (which, let us call `df`) with at least three columns:
+
+-   `t`: Indicating the time of the measurement
+
+-   `y`: The value $y_t$ on time $t$
+
+-   `weekday` (or `weekday_num`): The name (or number) of the weekday corresponding to `t`.
+    In the case of the former, it should be in the form of capitalized three letter codes (`"Mon"`, `"Tue"`, ..., `"Sun"`).
+    Note that we consider Monday to be the first day of the week, and Sunday be the 0th/7th day of the week.
+
+The column `weekday` (and `weekday_num`) can be generated if the date (e.g., as `date`) is included in `df`, using `lubridate::wday` and setting:
+
+```{r}
+#| code-fold: false
+
+df <- df %>% 
+  mutate(weekday = lubridate::wday(date,
+                                   week_start = 1,
+                                   label = TRUE),
+         weekday_num = lubridate::wday(date,
+                                       week_start = 1,
+                                       label = FALSE))
+```
+
+The missing values in the time series should be explicitly indicated with `NA` in the dataframe---that is, we should have a row for each time point---which can be achieved by:
+
+```{r}
+#| code-fold: false
+
+df <- df %>%
+  right_join(data.frame(t = min(df$t):max(df$t)),
+             by = "t") %>% 
+  arrange(t)
+```
+
+## Time series visualizations {#sec-visualization}
+
+The visualizations shown in discussed in the paper were plotted using separate functions for each plot, that are named accordingly `plot_hist()` , `plot_seq()`, `plot_dowe()`, `plot_psd()`, `plot_acf()`, and `plot_pacf()`.
+The main argument of these functions is `d`, which can be a numerical vector (for which the weekdays are added, starting by Monday), or it can be a dataframe with the columns specifiedexplained earlier.
+
+```{r, eval = load_functions}
+#| code-fold: true
+#| code-summary: "Click to reveal `plot_hist()`"
+
+<<plot_hist>>
+```
+
+```{r, eval = load_functions}
+#| code-fold: true
+#| code-summary: "Click to reveal `plot_seq()`"
+
+<<plot_seq>>
+```
+
+```{r, eval = load_functions}
+#| code-fold: true
+#| code-summary: "Click to reveal `plot_dowe()`"
+
+<<plot_dowe>>
+```
+
+```{r, eval = load_functions}
+#| code-fold: true
+#| code-summary: "Click to reveal `plot_psd()`"
+
+<<plot_psd>>
+```
+
+```{r, eval = load_functions}
+#| code-fold: true
+#| code-summary: "Click to reveal `plot_acf()`"
+
+<<plot_acf>>
+```
+
+```{r, eval = load_functions}
+#| code-fold: true
+#| code-summary: "Click to reveal `plot_pacf()`"
+
+<<plot_pacf>>
+```
+
+To make sure that the data provided to these functions are in the correct format (with the above-mentioned columns), the function `data_shaper()` is called within these plotting functions to do the job.
+This function also amends a new column (`week_num`) to the dataframe that counts the week number since the start of the time series, which is needed for plotting the DOWEs in `plot_dowe()`.
+
+```{r, eval = load_functions}
+#| code-fold: true
+#| code-summary: "Click to reveal `data_shaper()`"
+
+<<data_shaper>>
+```
+
+Then, the function `plot_row_assembly()` uses the above functions to put them together in a row and returns either the plot, or saves it in a file in the `figures` folder with dimensions and sizes that render in nice proportions when the plot is saved with a `.svg` (good for putting in Word or online) or `.pdf` (good for $\LaTeX$ manuscripts) file formats.
+
+This function takes a list of time series (either as vectors or dataframes) in its `list_data` argument, and adds vertical labels to each row of the plots with the values passed to `list_labels`.
+
+```{r, eval = load_functions}
+#| code-fold: true
+#| code-summary: "Click to reveal `plot_row_assembly()`"
+
+<<plot_row_assembly>>
+```
+
+## Simulating time series {#sec-simulation}
+
+Pure time series (i.e., without time index and weekday) are generated using `m_sim()` that generate $y_t = \mu_t + a_t$ by adding a deterministic vector `mu_t` to a stochastic time series `a_t`.
+The innovations used in for simulation are generated from a random seed set by `seed` argument.
+The arguments `burnin` indicate the number of samples thrown away as burn-in samples.
+
+The function generates three time-varying versions of $\mu_t$ as explained in the paper in three vectors:
+
+-   $D_t$ (as `d_t_0`) based on the weekday means (DOWEs) that are passed as a vector to `dowe` (default: all zeros);
+
+-   $W_t$ (as `w_t_0`) with workdays mean of 0, and weekend effect determined by the argument `wee`; and
+
+-   $H_t$ (as `h_t_0`) with overall mean of 0 and given amplitude `amp` (default: 0), and peak shift `peak_shift` (default: 1, for Monday).
+
+The time-varying mean `mu_t` is constructed by adding `c` to `d_t_0`, `w_t_0`, `h_t_0`.
+This approach allows users to investigate the effect imposing multiple mechanisms for the mean structure $\mu_t$.
+Needless to say, $D_t$, in general, can account for any arbitrary shape in the mean structure; yet, our implementation may come in handy in the Shiny app (see @sec-shiny).
+
+The stochastic component $a_t$ is generated using `sarima::sim_sarima()`.
+Since this function cannot generate white noise process, if no SAR\[I\]MA component is specified, `a_t` is generated manually.
+In our simulation function `m_sim()` we allow including non-seasonal and seasonal differencing in the model (which we did not discuss in the paper, but implemented in the Shiny app).
+
+```{r, eval = load_functions}
+#| code-fold: true
+#| code-summary: "Click to reveal `m_sim()`"
+
+<<m_sim>>
+```
+
+## Shiny app {#sec-shiny}
+
+The Shiny app makes use of `plot_sim_rows()` and is quite slow, as the visualization functions are rather heavy.
+The code for this app is as follows and can be run on your machine:
+
+```{r}
+#| eval: false
+#| code-fold: true
+#| code-summary: "Click to reveal the Shiny app source code"
+
+<<shiny>>
+```
+
+As this app is heavy to load, it cannot be run on shinyapps.io.
+However, an older version of the app (based on another simulation and plotting architecture) is hosted at psyguy.shinyapps.io/cycles/.
+
+## Modeling time series data {#sec-modeling}
+
+There are to functions that are used for analyzing the data: `m_fit()` does the model fitting, and `m_estimates()` extracts the parameter estimates and post-processes them to get CIs and information criteria, and, if necessary, performs bootstrapping.
+
+### Fitting time series models {#sec-fitting}
+
+To carry out the analyses in the paper, we wrote a wrapper function called `m_fit()` around `forecast::Arima()` with additional capabilities which is a generalization of the code snippets shown in the paper.
+
+This function flexibly determines the model orders by parsing the model name (as they were presented in the paper) passed as a string to `model_string`, which helps using it in elsewhere, e.g., in a Shiny app.
+
+```{r, eval = load_functions}
+#| code-fold: true
+#| code-summary: "Click to reveal `m_fit()`"
+
+<<m_fit>>
+```
+
+This function can also save the fit object in a folder (specified by `save_folder_fit`).
+To streamline the model fitting and post-processing the fit files, `m_fit()` will call `m_estimates()` if `save_est` is set to `TRUE`.
+
+### Extracting parameter estimates {#sec-estimates}
+
+The output of `m_fit()` is a list of class `Arima` that contains multiple components (see `?stats::arima` and `?forecast::Arima`), but does not contain the estimation standard errors and significances.
+Furthermore, in case $H_t$ is included in the model, the output does not contain estimates for peak shift $\psi$ and amplitude $S$.
+
+The function `m_estimates()` extracts the point estimates of the parameters( `m$coef`) and calculates their estimation standard errors using the estimated variance matrix of the coefficients (`m$var.coef`), and calculates 2.5% and 97.5% confidence intervals and significance of the estimates, and stores them in a dataframe called `estimates`.
+The function returns a list that contains this dataframe as well as a 1-row dataframe `information_criteria` that includes different information criteria (AIC, AICc, BIC) as well as the absolute value of the log-likelihood (that could have been used as a criterion in model selection, which we did not use in our paper).
+
+```{r, eval = load_functions}
+#| code-fold: true
+#| code-summary: "Click to reveal `m_estimates()`"
+
+<<m_estimates>>
+```
+
+#### Estimating harmonic parameters by bootstrapping
+
+In case the harmonic mean structure is in the model, this function also calculates points estimates and their CIs of peak shift $\psi$ and amplitude $S$ by means of bootstrapping by drawing `boot_n` samples (default: 10000) from the multivariate normal distribution attributable implied by the estimated variance matrix of the coefficients.
+
+The amplitude $S$ and peak shift $\psi$ are respectively calculated by two auxiliary functions, `calc_amp()` and `calc_peak_theta()`, which are vectorized (using `Vectorize()`) to increase the performance when applied to bootstrapped values.
+Note that `calc_peak_theta(a, b)` is equivalent to `base::atan2(b, a)`, which is the [2-argument arctangent function](https://en.wikipedia.org/wiki/Atan2); we explicitly defined this function in our code to mirror the expression provided in Equation 22b of the paper.
+
+Note that the variable $\psi$ is circular with a period of 7, that is, peak shifts of $\psi$ and $\psi + 7$ and $\psi - 7$ are equivalent, thus its value cannot calculate summary statistics such as mean, median, and quantiles based on its $[0, 7)$ values; for instance, an individual with $\psi_1 = 1$ (peaking on Monday) is more similar to someone with $\psi_2 = 6$ (peaking on Saturday) than someone with and $\psi_3 = 4$ (peaking on Thursday).
+See @cremers_2018_OneDirectionTutorial for more insights.
+
+To take the circularity of this variable into account, we use `circular` package [@lund_2023_CircularCircularStatistics] and the function `circular::as.circular`, that treats the output of `atan2()` in radians and assures that its circular equivalent spans $[0, 2\pi)$.
+Consequently, there is no need of taking the modulo of the values `boot_psi_radian` (as explained in Equation 23 of the manuscript), and we only need to multiply them by $\frac{7}{2\pi}$ to reach to `boot_psi_radian` (that spans $[0, 7)$).
+Furthermore, given that the distribution of $\psi$ (as well as $S$) will be skewed due to the nonlinear transformation of random variable $a$ and $b$, we use the median to determine the point estimates of $S$ and $\psi$, and calculate the confidence intervals based on 2.5 and 97.5% quantiles.
+
+# Reproducing figures, analyses, and results {#sec-reproducing}
+
+## Importing and investigating the empirical data {#sec-investigate}
+
+The empirical data used in this paper comes form @wright_2015_DailyInterpersonalAffective.
+For our study, we used the average PA scores of 98 individuals, who had less than 50% missing responses.
+This subset of data is stored as `r_pa.rds` in the `data/` folder of the repository, which does not contain demographic information, and the unique person identifies have been shuffled and stored as `id`.
+Other variables in the dataset are the measurement date (`date`), the measurement time (`t`, starting from the first day of the study on 2013-02-11), the weekday associated with the measurement date (`weekday`), the average PA time series (`y`), the weekday number (`weekday_num`) with Monday being the first day of the week, and the week number (`week_num`) associated with that date.
+
+The data is shown in the following table, and it can be filtered based on some variables.
+The data can also be copied to the clipboard or downloaded as PDF, CSV, or an Excel file.
+In case you use the empirical data in a study, please cite @wright_2015_DailyInterpersonalAffective as well.
+
+```{r}
+#| eval: true
+#| code-fold: true
+#| echo: false
+#| include: true
+
+library(DT)
+library(tidyverse)
+d_pa <- readRDS(here::here("data",
+                           "d_pa.rds"))
+
+d_pa %>%
+  arrange(id, t) %>% 
+  mutate(y = round(y, 2)) %>% 
+  datatable(
+    filter = 'bottom',
+    extensions = "Buttons",
+    options = list(
+      paging = TRUE,
+      scrollX = TRUE,
+      searching = TRUE,
+      ordering = TRUE,
+      dom = 'Bfrtip',
+      buttons = c('copy', 'csv', 'excel', 'pdf'),
+      pageLength = 10,
+      lengthMenu = c(3, 5, 10)
+    )
+  )
+
+```
+
+To generate the visualizations of all individuals, we make 14 batches of seven individuals using the following code:
+
+```{r, eval = run_figures}
+#| code-fold: true
+#| code-summary: "Click to reveal code"
+
+<<plot_empirical_98_individuals>>
+```
+
+The resulting figures are shown below:
+
+::: panel-tabset
+#### Batch 1
+
+![](figures/rows-empirical-35_batch-1.svg)
+
+#### Batch 2
+
+![](figures/rows-empirical-35_batch-2.svg)
+
+#### Batch 3
+
+![](figures/rows-empirical-35_batch-3.svg)
+
+#### Batch 4
+
+![](figures/rows-empirical-35_batch-4.svg)
+
+#### Batch 5
+
+![](figures/rows-empirical-35_batch-5.svg)
+
+#### Batch 6
+
+![](figures/rows-empirical-35_batch-6.svg)
+
+#### Batch 7
+
+![](figures/rows-empirical-35_batch-7.svg)
+
+#### Batch 8
+
+![](figures/rows-empirical-35_batch-8.svg)
+
+#### Batch 9
+
+![](figures/rows-empirical-35_batch-9.svg)
+
+#### Batch 10
+
+![](figures/rows-empirical-35_batch-10.svg)
+
+#### Batch 11
+
+![](figures/rows-empirical-35_batch-11.svg)
+
+#### Batch 12
+
+![](figures/rows-empirical-35_batch-12.svg)
+
+#### Batch 13
+
+![](figures/rows-empirical-35_batch-13.svg)
+
+#### Batch 14
+
+![](figures/rows-empirical-35_batch-14.svg)
+:::
+
+## Reproducing figures in the paper {#sec-reproduce-figures}
+
+### Visualizing empirical time series
+
+The empirical time series shown of Persons A-F in the Figure 1 of the paper belonged to individuals with identifiers 70, 14, 12, 43, 97, and 20.
+To make the same plot, we used the following script, which makes use of `plot_row_assembly()`:
+
+```{r, eval = run_figures}
+#| code-fold: true
+#| code-summary: "Click to reveal code"
+
+<<plot_empirical_6_individuals>>
+```
+
+That generates the following figure:
+
+![](figures/rows-empirical-35.svg)
+
+Note that here we saved the figure as an `svg` file to be viewed in the HTML output, which has resulted in fonts different from those shown in the paper.
+
+### Visualizing simulated time series
+
+Figures 2-5 were generated by `plot_sim_rows()`, which uses simulating data with `m_sim()` and plotting them using `plot_row_assembly()`, and is defined as follows:
+
+```{r, eval = run_figures}
+#| code-fold: true
+#| code-summary: "Click to reveal code"
+
+<<plot_sim_rows>>
+```
+
+Running the following code makes the simulated figures:
+
+```{r, eval = run_figures}
+#| code-fold: true
+#| code-summary: "Click to reveal code"
+
+<<plot_simulated_ts>>
+```
+
+:::
+
+::: panel-tabset
+#### Figure 2
+
+![](figures/rows-sim-7-c.svg)
+
+#### Figure 3
+
+![](figures/rows-sim-7-d.svg)
+
+#### Figure 4
+
+![](figures/rows-sim-7-h.svg)
+
+#### Figure 5
+
+![](figures/rows-sim-7-w.svg)
+:::
+
+## Reproducing the analyses of the empirical dataset {#sec-empirical-fitting}
+
+The following code was used for the empirical analyses in the paper.
+In short, we first load the required packages and functions, read the empirical data, and make sure that the folders for saving models fits and estimates exist.
+Then, a dataframe `conditions_table` is made, and parallel processing is initiated.
+
+The analyses are done by iterating over rows of this dataframe using `foreach()` in parallel, and the rows in the dataframe which determine the data of which individual should be analyzed by what mean structure and what SARMA model orders at a given iteration.
+By running the loop, a fit file and a est file are generated and saved, respectively, in `fits/` and `ests/` folders.
+The analyses took less than two minutes on our server with 46 parallel threads.
+
+```{r, eval = run_analyses}
+#| code-fold: true
+#| code-summary: "Click to reveal code for running the analyses"
+
+<<analyses_run_parallel>>
+```
+
+## Results {#sec-empirical-results}
+
+After fitting the models, the estimate files are read from `ests/` to make a large dataframe (`harvest`) of containing all model estimates and information criteria for all models and all individuals.
+This dataframe is them modified to include other properties, such as timescales, dynamics, and total model, which is saved as `results_estimates` and is easier for further inspections.
+
+```{r, eval = run_analyses}
+#| code-fold: true
+#| code-summary: "Click to reveal code for extracting the results"
+
+<<analyses_extract_results>>
+```
+
+Lastly, the `results_estimates` is summarized to only contain the number of times each of the 64 models have won according to different information criteria, and the results reported in Table 2 and 3 are obtained using the `stats::xtabs()`, as implemented in the code.
+
+```{r}
+#| eval: true
+#| code-fold: true
+#| code-summary: "Click to reveal code for reporting the results"
+#| echo: fenced
+#| include: true
+
+<<analyses_reporting_results>>
+```
