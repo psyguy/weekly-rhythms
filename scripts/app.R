@@ -1,15 +1,23 @@
 ## @knitr shiny
 
 library(shiny)
-source(here::here("scripts/initialization.R"))
-source(here::here("scripts/functions_simulation.R"))
-source(here::here("scripts/functions_visualization.R"))
+library(patchwork)
+library(tidyverse)
+library(imputeTS)
+library(forecast)
+library(stats)
+library(sarima)
+library(lubridate)
 
-## To deploy on server, comment the above `source` functions
-## and uncomment the following:
-# source("initialization.R")
-# source("functions_simulation.R")
-# source("functions_visualization.R")
+## To run the app locally, uncomment the following two lines and
+## comment the next two `source(...)` function calls:
+# source(here::here("scripts/functions_simulation.R"))
+# source(here::here("scripts/functions_visualization.R"))
+
+## To deploy on server, comment the above `source(...)`
+## function calls and uncomment the following:
+source("functions_simulation.R")
+source("functions_visualization.R")
 
 options(warn = -1)
 
@@ -27,8 +35,6 @@ ui <- fluidPage(
   titlePanel("Simulating SARMA processes with time-dependent mean structures"),
 
   sidebarLayout(
-
-
     sidebarPanel(
       style = "height: 90vh; overflow-y: auto;",
       # Make the sidebar responsive
@@ -52,12 +58,16 @@ ui <- fluidPage(
           3,
           numericInput("fixed_sigma2", "sigma2:", value = 1, width = '60px')
         ),
-        column(3, numericInput(
-          "fixed_seed", "Seed:",
-          value = 0,
-          step = 1,
-          width = '60px'
-        )),
+        column(
+          3,
+          numericInput(
+            "fixed_seed",
+            "Seed:",
+            value = 0,
+            step = 1,
+            width = '60px'
+          )
+        ),
         column(3, numericInput(
           "fixed_c", "c:", value = 0, width = '60px'
         ))
@@ -154,78 +164,85 @@ ui <- fluidPage(
       ),
 
       # Amplitude and phase shift
-      fluidRow(column(
-        4, numericInput("fixed_amp", "Amplitude:", value = 1.5, width = '100px')
-      ),
-      column(
-        4,
-        tags$div(class = "slider-label", "φ:"),
-        sliderInput(
-          "fixed_peak_shift",
-          NULL,
-          min = 0,
-          max = 7,
-          step = 0.5,
-          value = 2
+      fluidRow(
+        column(
+          4,
+          numericInput("fixed_amp", "Amplitude:", value = 1.5, width = '100px')
+        ),
+        column(
+          4,
+          tags$div(class = "slider-label", "φ:"),
+          sliderInput(
+            "fixed_peak_shift",
+            NULL,
+            min = 0,
+            max = 7,
+            step = 0.5,
+            value = 2
+          )
+        ),
+        # Weekend effect
+        column(
+          4,
+          numericInput(
+            "fixed_wee",
+            "Weekend effect:",
+            value = 2,
+            width = '100px'
+          )
         )
       ),
-      # Weekend effect
-      column(
-        4,
-        numericInput("fixed_wee",
-                     "Weekend effect:",
-                     value = 2, width = '100px')
-      )),
       width = 4
     ),
 
     # Plot
-    mainPanel(
-      plotOutput("myImage", height = "150px", width = "350px"),
-      width = 8
-    )
+    mainPanel(plotOutput(
+      "myImage", height = "150px", width = "350px"
+    ),
+    width = 8)
   )
 )
 
 
 server <- function(input, output) {
-
-  p <- eventReactive(input$go,{
-    plot_sim_rows(fixed_c = input$fixed_c,
-                  fixed_dowe = c(
-                    input$Mon,
-                    input$Tue,
-                    input$Wed,
-                    input$Thu,
-                    input$Fri,
-                    input$Sat,
-                    input$Sun
-                  )*input$Mult,
-                  fixed_amp = input$fixed_amp,
-                  fixed_peak_shift = input$fixed_peak_shift,
-                  fixed_wee = input$fixed_wee,
-                  fixed_sigma2 = input$fixed_sigma2,
-                  fixed_ma = input$fixed_ma,
-                  fixed_ar = input$fixed_ar,
-                  fixed_sar = input$fixed_sar,
-                  fixed_sma = input$fixed_sma,
-                  fixed_n = input$fixed_n * 100,
-                  fixed_seed = input$fixed_seed,
-                  prefix = NULL,
-                  for_shiny = TRUE,
-                  # prefix = NULL,
-                  file_format = "svg"
+  p <- eventReactive(input$go, {
+    plot_sim_rows(
+      fixed_c = input$fixed_c,
+      fixed_dowe = c(
+        input$Mon,
+        input$Tue,
+        input$Wed,
+        input$Thu,
+        input$Fri,
+        input$Sat,
+        input$Sun
+      ) * input$Mult,
+      fixed_amp = input$fixed_amp,
+      fixed_peak_shift = input$fixed_peak_shift,
+      fixed_wee = input$fixed_wee,
+      fixed_sigma2 = input$fixed_sigma2,
+      fixed_ma = input$fixed_ma,
+      fixed_ar = input$fixed_ar,
+      fixed_sar = input$fixed_sar,
+      fixed_sma = input$fixed_sma,
+      fixed_n = input$fixed_n * 100,
+      fixed_seed = input$fixed_seed,
+      prefix = NULL,
+      for_shiny = TRUE,
+      # prefix = NULL,
+      file_format = "svg"
     )
+
   },
   ignoreNULL = FALSE)
 
+
   output$myImage <- renderPlot({
     print(p())
-  }, width = 40 * 28.35/1.4,
-  height = (4 * 7 + 0.5) * 28.35/2) # Convert cm to pixels if needed
+  }, width = 40 * 28.35 / 1.4,
+  height = (4 * 7 + 0.5) * 28.35 / 2) # Convert cm to pixels if needed
 
 }
 
 
 shinyApp(ui = ui, server = server)
-

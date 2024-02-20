@@ -4,15 +4,20 @@ description: |
   Reproducible code for *Daily dynamics and weekly rhythms: A tutorial on seasonal ARMA models combined with day-of-week effects*.
 subtitle: "Reproducible Code"
 author:
-  - name: M. M. Haqiqatkhah
+  - name: Haqiqatkhah, Mohammadhossein Manuel
     affiliation: Utrecht University
     affiliation-url: https://www.uu.nl/staff/MHHaqiqatkhah
     orcid: 0000-0002-2513-3761
-  - name: E. L. Hamaker
+  - name: Hamaker, Ellen L.
     affiliation: Utrecht University
     affiliation-url: https://www.uu.nl/staff/ELHamaker
 citation:
-  url: https://psyguy.github.io/weekly-rhythms
+  type: article-journal
+  title: "Daily dynamics and weekly rhythms: A tutorial on seasonal ARMA models combined with day-of-week effects"
+  container-title: "PsyArXiv Preprints"
+  issued: 2024/02/20
+  doi: "10.31234/osf.io/duvqh"
+  url: https://psyarxiv.com/duvqh
 google-scholar: true
 format:
   html:
@@ -59,16 +64,20 @@ bibliography: references.bib
 
 # Introduction {#sec-intro}
 
-This document contains reproducible code of the manuscript on weekly patterns and dynamics.
-Please cite as
+This document contains reproducible code of the manuscript by @haqiqatkhah_2024_DailyDynamicsWeekly on combining day-of-week effects and week-to-week dynamics with day-to-day dynamics.
+For attribution, please cite as
 
-> citation info
+> Haqiqatkhah, M. M., & Hamaker, E. L.
+> (2024, February 20).
+> Daily dynamics and weekly rhythms: A tutorial on seasonal ARMA models combined with day-of-week effects.
+> *PsyArXiv Preprints*.
+> https://doi.org/10.31234/osf.io/duvqh
 
 This document has two main sections:
 
 In @sec-functions, we present the functions used for making the visualizations (@sec-visualization), generating simulated time series (@sec-simulation), running the Shiny app accompanying the paper (@sec-shiny), and fitting models to empirical data (@sec-modeling).
 
-In @sec-reproducing, we provide the empirical dataset and additional plots for empirical time series (@sec-investigate), which is followed by the reproducible code for generating figures shown in the paper (@sec-reproduce-figures), running all the the analyses on the empirical dataset (@sec-empirical-fitting) and making the tables reported in the paper  (@sec-reproducing).
+In @sec-reproducing, we provide the empirical dataset and additional plots for empirical time series (@sec-investigate), which is followed by the reproducible code for generating figures shown in the paper (@sec-reproduce-figures), running all the the analyses on the empirical dataset (@sec-empirical-fitting) and making the tables reported in the paper (@sec-reproducing).
 
 To replicate the study from the scratch, you should first either clone the repository (using `git clone https://github.com/psyguy/WeCycle.git`) or [download the repository as a zip file](https://github.com/psyguy/WeCycle/archive/refs/heads/main.zip) and extract it on your machine.
 Then you can run the `.R` files you find in the `scripts` folder with the following order:
@@ -97,7 +106,6 @@ load_functions <- FALSE
 run_figures <- FALSE
 run_analyses <- FALSE
 ```
-
 
 ```{r}
 #| label: setup
@@ -259,8 +267,8 @@ In our simulation function `m_sim()` we allow including non-seasonal and seasona
 
 ## Shiny app {#sec-shiny}
 
-The Shiny app makes use of `plot_sim_rows()` and is quite slow, as the visualization functions are rather heavy.
-The code for this app is as follows and can be run on your machine:
+The Shiny app makes use of `plot_sim_rows()` to simulate data and make visualizations.
+The code for this app is as follows:
 
 ```{r}
 #| eval: false
@@ -270,8 +278,8 @@ The code for this app is as follows and can be run on your machine:
 <<shiny>>
 ```
 
-As this app is heavy to load, it cannot be run on shinyapps.io.
-However, an older version of the app (based on another simulation and plotting architecture) is hosted at psyguy.shinyapps.io/cycles/.
+The app is hoseted online at https://psyguy.shinyapps.io/weekly-rhythms.
+To run the app locally, run `source(here::here("scripts", "app.R")`.
 
 ## Modeling time series data {#sec-modeling}
 

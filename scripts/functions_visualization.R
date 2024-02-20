@@ -1,3 +1,74 @@
+## @knitr data_shaper
+
+data_shaper <- function(d,
+                        minimal_output = FALSE) {
+
+  weekdays <- c("Mon",
+                "Tue",
+                "Wed",
+                "Thu",
+                "Fri",
+                "Sat",
+                "Sun")
+
+  if (!is.data.frame(d)){
+    d <- data.frame(
+      t = 1:length(d),
+      y = d,
+      weekday = rep(weekdays, length.out = length(d)),
+      week_num = rep(1:ceiling(length(d) / 7), each = 7)[1:length(d)]
+    )
+    # if(minimal_output == TRUE) return(d)
+  }
+
+  if ("date" %in% colnames(d))
+    d <- d %>%
+      mutate(
+        weekday = lubridate::wday(date,
+                                  week_start = 1,
+                                  label = TRUE),
+        weekday_num = lubridate::wday(date,
+                                      week_start = 1,
+                                      label = FALSE)
+      )
+
+  if (!("weekday_num" %in% colnames(d)))
+    d$weekday_num <- match(d$weekday, weekdays)
+
+  if (!("week_num" %in% colnames(d))) {
+    # Initialize week number and an empty vector to store week numbers
+    week_number <- 1
+    week_numbers <- numeric(length(d$weekday_num))
+    # Check if the sequence starts with a day other than Monday and adjust week_number accordingly
+    if (d$weekday_num[1] != 1) {
+      week_number <- 1
+    } else {
+      week_number <-
+        2  # Start from week 2 if the first day is Monday, to handle edge cases
+    }
+    # Iterate through the days, increasing week number after encountering a Sunday
+    for (i in 1:length(d$weekday_num)) {
+      week_numbers[i] <- week_number
+      if (d$weekday_num[i] == 7 &&
+          i != length(d$weekday_num)) {
+        # Check for Sunday and not the last element
+        week_number <- week_number + 1
+      }
+    }
+    d$week_num <- week_numbers
+  }
+
+  # Substituting NA's for implicit missing values
+  d_out <- d %>%
+    right_join(data.frame(t = min(d$t):max(d$t)),
+               by = "t") %>%
+    mutate(weekday = weekday %>% factor(weekdays)) %>%
+    arrange(t)
+
+  return(d_out)
+
+}
+
 ## @knitr plot_hist
 
 plot_hist <- function(d = NULL,
@@ -448,7 +519,7 @@ plot_pacf <- function(d = NULL,
                       remove_titles = TRUE,
                       remove_xlab = TRUE,
                       scale_rel = 0.9,
-                      max_acf.lag = 35,
+                      max_pacf.lag = 35,
                       max_period = 15,
                       ymin = 0-0.1,
                       ymax = 4+0.1,
@@ -477,13 +548,14 @@ plot_pacf <- function(d = NULL,
     imputeTS::na_kalman()
 
   breaks_acf <- seq(0,
-                    max_acf.lag,
-                    by = 14 * floor(max_acf.lag / 7 / 3))
+                    max_pacf.lag,
+                    by = 14 * floor(max_pacf.lag / 7 / 3))
 
   df_pacf <- data.frame(
-    lag = c(0:max_acf.lag),
+    lag = c(0:max_pacf.lag),
     pacf = stats::pacf(y_imp,
-                       lag.max = max_acf.lag,
+                       max(1, max_pacf.lag),
+                       na.action = na.exclude,
                        plot = FALSE)$acf %>%
       as.numeric() %>%
       c(0, .)
@@ -499,7 +571,7 @@ plot_pacf <- function(d = NULL,
         y = 0,
         yend = pacf
       ),
-      linewidth = rel(scale_rel * 35 / max_acf.lag / 2),
+      linewidth = rel(scale_rel * 35 / max_pacf.lag / 2),
       color = col_pacf,
       lineend = "butt"
     ) +
@@ -787,7 +859,7 @@ plot_sim_rows <- function(fixed_c = 0,
                       prefix,
                       ".",
                       file_format)
-  if(is.null(prefix)){
+  if(is.null(prefix) | for_shiny == TRUE){
     save_name <- NULL
     prefix <- "a_t"
   }
